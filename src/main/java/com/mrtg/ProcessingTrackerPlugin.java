@@ -452,6 +452,16 @@ public class ProcessingTrackerPlugin extends Plugin
 		}
 	}
 
+	public void toggleProcessingItemCollapsed(ProcessingItem item)
+	{
+		item.setCollapsed(!item.isCollapsed());
+
+		if (panel != null)
+		{
+			panel.refresh();
+		}
+	}
+
 	private void logWidget(Widget widget, String label)
 	{
 		log.info(
@@ -465,6 +475,27 @@ public class ProcessingTrackerPlugin extends Plugin
 				safe(stripTags(widget.getName())),
 				widget.getCanvasLocation()
 		);
+	}
+
+	public void renameProcessingItem(ProcessingItem item, String newName)
+	{
+		if (item == null)
+		{
+			return;
+		}
+
+		String trimmed = newName == null ? "" : newName.trim();
+		if (trimmed.isEmpty())
+		{
+			return;
+		}
+
+		item.setName(trimmed);
+
+		if (panel != null)
+		{
+			panel.refresh();
+		}
 	}
 
 	private String stripTags(String input)

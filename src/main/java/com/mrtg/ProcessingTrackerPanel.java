@@ -1,19 +1,16 @@
 package com.mrtg;
 
 import java.awt.*;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.text.NumberFormat;
 import java.util.List;
 import java.util.Locale;
 import javax.inject.Inject;
-import javax.swing.BorderFactory;
-import javax.swing.Box;
-import javax.swing.BoxLayout;
-import javax.swing.JButton;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
+import javax.swing.*;
+
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PluginPanel;
@@ -103,35 +100,76 @@ public class ProcessingTrackerPanel extends PluginPanel
         card.setOpaque(false);
 
         JPanel headerSection = createInnerSection();
-        JLabel header = new JLabel(item.getName());
-        header.setForeground(Color.WHITE);
-        header.setAlignmentX(Component.LEFT_ALIGNMENT);
-        headerSection.add(header);
+        headerSection.setLayout(new BorderLayout());
 
-        JPanel boughtSection = createInnerSection();
-        boughtSection.add(createSectionTitle("Bought"));
-        boughtSection.add(Box.createRigidArea(new Dimension(0, 6)));
-        boughtSection.add(createTradeListPanel(item.getTradesByType(TradeType.BUY)));
+//        JLabel header = new JLabel(item.getName());
+//        header.setForeground(Color.WHITE);
 
-        JPanel soldSection = createInnerSection();
-        soldSection.add(createSectionTitle("Sold"));
-        soldSection.add(Box.createRigidArea(new Dimension(0, 6)));
-        soldSection.add(createTradeListPanel(item.getTradesByType(TradeType.SELL)));
+        JTextField nameField = new JTextField(item.getName());
+        nameField.setForeground(Color.WHITE);
+        nameField.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        nameField.setCaretColor(Color.WHITE);
+        nameField.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
+        nameField.setOpaque(true);
+        nameField.setToolTipText("Rename processed item");
 
-        JPanel profitSection = createProfitSection(item);
+        nameField.addActionListener(e ->
+                plugin.renameProcessingItem(item, nameField.getText())
+        );
+
+        nameField.addFocusListener(new FocusAdapter()
+        {
+            @Override
+            public void focusLost(FocusEvent e)
+            {
+                plugin.renameProcessingItem(item, nameField.getText());
+            }
+        });
+
+        JButton collapseButton = new JButton(item.isCollapsed() ? "+" : "−");
+        collapseButton.setFocusable(false);
+        collapseButton.setMargin(new Insets(0, 4, 0, 4));
+        collapseButton.setPreferredSize(new Dimension(24, 20));
+        collapseButton.setMinimumSize(new Dimension(24, 20));
+        collapseButton.setMaximumSize(new Dimension(24, 20));
+        collapseButton.setBorderPainted(false);
+        collapseButton.setContentAreaFilled(false);
+        collapseButton.setForeground(Color.LIGHT_GRAY);
+        collapseButton.setToolTipText(item.isCollapsed() ? "Expand" : "Minimize");
+        collapseButton.addActionListener(e -> plugin.toggleProcessingItemCollapsed(item));
+
+        headerSection.add(nameField, BorderLayout.CENTER);
+        headerSection.add(collapseButton, BorderLayout.EAST);
 
         headerSection.setMaximumSize(new Dimension(Integer.MAX_VALUE, headerSection.getPreferredSize().height));
-        boughtSection.setMaximumSize(new Dimension(Integer.MAX_VALUE, boughtSection.getPreferredSize().height));
-        soldSection.setMaximumSize(new Dimension(Integer.MAX_VALUE, soldSection.getPreferredSize().height));
-        profitSection.setMaximumSize(new Dimension(Integer.MAX_VALUE, profitSection.getPreferredSize().height));
 
         card.add(headerSection);
-        card.add(Box.createRigidArea(new Dimension(0, 2)));
-        card.add(boughtSection);
-        card.add(Box.createRigidArea(new Dimension(0, 2)));
-        card.add(soldSection);
-        card.add(Box.createRigidArea(new Dimension(0, 2)));
-        card.add(profitSection);
+
+        if (!item.isCollapsed())
+        {
+            JPanel boughtSection = createInnerSection();
+            boughtSection.add(createSectionTitle("Bought"));
+            boughtSection.add(Box.createRigidArea(new Dimension(0, 6)));
+            boughtSection.add(createTradeListPanel(item.getTradesByType(TradeType.BUY)));
+
+            JPanel soldSection = createInnerSection();
+            soldSection.add(createSectionTitle("Sold"));
+            soldSection.add(Box.createRigidArea(new Dimension(0, 6)));
+            soldSection.add(createTradeListPanel(item.getTradesByType(TradeType.SELL)));
+
+            JPanel profitSection = createProfitSection(item);
+
+            boughtSection.setMaximumSize(new Dimension(Integer.MAX_VALUE, boughtSection.getPreferredSize().height));
+            soldSection.setMaximumSize(new Dimension(Integer.MAX_VALUE, soldSection.getPreferredSize().height));
+            profitSection.setMaximumSize(new Dimension(Integer.MAX_VALUE, profitSection.getPreferredSize().height));
+
+            card.add(Box.createRigidArea(new Dimension(0, 2)));
+            card.add(boughtSection);
+            card.add(Box.createRigidArea(new Dimension(0, 2)));
+            card.add(soldSection);
+            card.add(Box.createRigidArea(new Dimension(0, 2)));
+            card.add(profitSection);
+        }
 
         card.setMaximumSize(new Dimension(Integer.MAX_VALUE, card.getPreferredSize().height));
 
@@ -250,8 +288,6 @@ public class ProcessingTrackerPanel extends PluginPanel
         deleteButton.setMaximumSize(new Dimension(24, 16));
         deleteButton.addActionListener(e -> plugin.removeTradeEntry(entry));
 
-        deleteButton.setForeground(Color.WHITE);
-
         deleteButton.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
@@ -302,7 +338,7 @@ public class ProcessingTrackerPanel extends PluginPanel
         JLabel detailsLabel = new JLabel(htmlWrap(details, 100));
         detailsLabel.setForeground(Color.LIGHT_GRAY);
 
-        JLabel totalLabel = new JLabel(htmlWrap(total, 120));
+        JLabel totalLabel = new JLabel(htmlWrap(total, 110));
         totalLabel.setForeground(Color.LIGHT_GRAY);
 
         detailsPanel.add(detailsLabel);

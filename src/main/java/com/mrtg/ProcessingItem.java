@@ -1,27 +1,24 @@
 package com.mrtg;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Getter
+@Setter
 public class ProcessingItem
 {
-    private final String name;
+    @Getter
+    @Setter
+    private String name;
     private final List<TradeEntry> trades = new ArrayList<>();
 
     public ProcessingItem(String name)
     {
         this.name = name;
-    }
-
-    public String getName()
-    {
-        return name;
-    }
-
-    public List<TradeEntry> getTrades()
-    {
-        return trades;
     }
 
     public void addTrade(TradeEntry trade)
@@ -50,4 +47,7 @@ public class ProcessingItem
 
         return sold - bought;
     }
+
+    @Setter
+    private boolean collapsed = false;
 }
