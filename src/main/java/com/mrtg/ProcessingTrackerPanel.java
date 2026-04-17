@@ -40,7 +40,7 @@ public class ProcessingTrackerPanel extends PluginPanel
         root.setBackground(ColorScheme.DARK_GRAY_COLOR);
         root.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 
-        JButton newProcessedButton = new JButton("+ New Processed Item");
+        JButton newProcessedButton = new JButton("+ New Processed Trade");
         newProcessedButton.setAlignmentX(Component.LEFT_ALIGNMENT);
         newProcessedButton.addActionListener(e ->
         {
@@ -48,7 +48,16 @@ public class ProcessingTrackerPanel extends PluginPanel
             refresh();
         });
 
-        root.add(newProcessedButton);
+        JPanel topRow = new JPanel();
+        topRow.setLayout(new BoxLayout(topRow, BoxLayout.X_AXIS));
+        topRow.setOpaque(false);
+        topRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        topRow.add(newProcessedButton);
+        topRow.add(Box.createRigidArea(new Dimension(4, 0)));
+        topRow.add(createHelpButton());
+
+        root.add(topRow);
         root.add(Box.createRigidArea(new Dimension(0, 8)));
 
         processedItemsContainer.setLayout(new BoxLayout(processedItemsContainer, BoxLayout.Y_AXIS));
@@ -118,15 +127,18 @@ public class ProcessingTrackerPanel extends PluginPanel
         nameField.addFocusListener(new FocusAdapter()
         {
             @Override
-            public void focusGained(FocusEvent e)
-            {
-                plugin.setActiveItem(item);
-            }
-
-            @Override
             public void focusLost(FocusEvent e)
             {
                 plugin.renameProcessingItem(item, nameField.getText());
+            }
+        });
+
+        nameField.addMouseListener(new MouseAdapter()
+        {
+            @Override
+            public void mousePressed(MouseEvent e)
+            {
+                plugin.setActiveItem(item);
             }
         });
 
@@ -143,18 +155,6 @@ public class ProcessingTrackerPanel extends PluginPanel
         collapseButton.addActionListener(e -> plugin.toggleProcessingItemCollapsed(item));
 
         boolean isActive = item == plugin.getActiveItem();
-
-//        headerSection.setBackground(
-//                isActive ? ColorScheme.PROGRESS_COMPLETE_COLOR : ColorScheme.DARKER_GRAY_COLOR
-//        );
-
-
-        if (isActive)
-        {
-            JLabel activeLabel = new JLabel("Active");
-            activeLabel.setForeground(new Color(0, 200, 83));
-            // add near the right side
-        }
 
         headerSection.add(nameField, BorderLayout.CENTER);
         headerSection.add(collapseButton, BorderLayout.EAST);
@@ -415,6 +415,40 @@ public class ProcessingTrackerPanel extends PluginPanel
                 line,
                 padding
         );
+    }
+
+    private JButton createHelpButton()
+    {
+        JButton helpButton = new JButton("?");
+
+        helpButton.setFocusable(false);
+
+        helpButton.setMargin(new Insets(0, 6, 0, 6));
+
+        helpButton.setPreferredSize(new Dimension(24, 24));
+        helpButton.setMinimumSize(new Dimension(24, 24));
+        helpButton.setMaximumSize(new Dimension(24, 24));
+
+        helpButton.setBorderPainted(false);
+        helpButton.setContentAreaFilled(false);
+
+        helpButton.setForeground(Color.LIGHT_GRAY);
+
+        helpButton.setToolTipText(buildHelpTooltip());
+
+        return helpButton;
+    }
+
+    private String buildHelpTooltip()
+    {
+        return "<html>"
+                + "<b>Processing Tracker</b><br><br>"
+                + "1. Click <b>New</b> to create a processing item.<br>"
+                + "2. Right-click a GE history entry.<br>"
+                + "3. Choose <b>Add to Buy</b> or <b>Add to Sell</b>.<br>"
+                + "4. Profit is calculated automatically.<br><br>"
+                + "<i>Tip:</i> Click a header to set it active."
+                + "</html>";
     }
 
     private String formatNumber(long value)

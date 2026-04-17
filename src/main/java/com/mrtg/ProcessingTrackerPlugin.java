@@ -1,8 +1,10 @@
 package com.mrtg;
 
+import com.google.gson.reflect.TypeToken;
 import com.google.inject.Provides;
 
 import java.io.IOException;
+import java.lang.reflect.Type;
 import java.util.List;
 import javax.inject.Inject;
 
@@ -34,8 +36,16 @@ public class ProcessingTrackerPlugin extends Plugin
 	@Inject
 	private com.google.inject.Injector injector;
 
+	@Inject
+	private ConfigManager configManager;
+
+	@Inject
+	private com.google.gson.Gson gson;
+
 	private net.runelite.client.ui.NavigationButton navButton;
 	private ProcessingTrackerPanel panel;
+	private static final String CONFIG_GROUP = "processingtracker";
+	private static final String STORED_ITEMS_KEY = "processedItems";
 
 	@Getter
     private final java.util.List<ProcessingItem> processingItems = new java.util.ArrayList<>();
@@ -57,6 +67,8 @@ public class ProcessingTrackerPlugin extends Plugin
 				.priority(5)
 				.panel(panel)
 				.build();
+
+		loadProcessingItems();
 
 		if (processingItems.isEmpty())
 		{
@@ -134,7 +146,6 @@ public class ProcessingTrackerPlugin extends Plugin
 			return;
 		}
 
-//		handleCustomMenuClick(sourceEntry);
 		ParsedTradeRow row = parseTradeRow(widget);
 
 		if (row == null)
@@ -159,20 +170,12 @@ public class ProcessingTrackerPlugin extends Plugin
 		}
 
 		activeItem.addTrade(entry);
+		saveProcessingItems();
 
 		if (panel != null)
 		{
 			panel.refresh();
 		}
-
-		log.info(
-				"Added {} {} x{} @ {} to {}",
-				type,
-				row.getItemName(),
-				row.getQuantity(),
-				row.getPriceEach(),
-				activeItem.getName()
-		);
 	}
 
 	private ParsedTradeRow parseTradeRow(Widget clickedWidget)
@@ -406,8 +409,6 @@ public class ProcessingTrackerPlugin extends Plugin
 				continue;
 			}
 
-			log.info("Checked Widget:   {}", sibling.getCanvasLocation());
-
 //			The only reliable way I'm finding for getting the index is based on the canvasLocation
 			Point a = siblings[i].getCanvasLocation();
 			Point b = clicked.getCanvasLocation();
@@ -429,6 +430,7 @@ public class ProcessingTrackerPlugin extends Plugin
 		{
 			activeItem = processingItems.isEmpty() ? null : processingItems.get(0);
 		}
+		saveProcessingItems();
 
 		if (panel != null)
 		{
@@ -445,6 +447,7 @@ public class ProcessingTrackerPlugin extends Plugin
 				break;
 			}
 		}
+		saveProcessingItems();
 
 		if (panel != null)
 		{
@@ -455,6 +458,7 @@ public class ProcessingTrackerPlugin extends Plugin
 	public void toggleProcessingItemCollapsed(ProcessingItem item)
 	{
 		item.setCollapsed(!item.isCollapsed());
+		saveProcessingItems();
 
 		if (panel != null)
 		{
@@ -464,12 +468,13 @@ public class ProcessingTrackerPlugin extends Plugin
 
 	public void setActiveItem(ProcessingItem item)
 	{
-		if (item == null)
+		if (item == null || item == activeItem)
 		{
 			return;
 		}
 
 		activeItem = item;
+		saveProcessingItems();
 
 		if (panel != null)
 		{
@@ -477,19 +482,39 @@ public class ProcessingTrackerPlugin extends Plugin
 		}
 	}
 
-	private void logWidget(Widget widget, String label)
+	private void saveProcessingItems()
 	{
-		log.info(
-				"{}: id={} type={} itemId={} qty={} text='{}' name='{}' canvasLoc='{}'",
-				label,
-				widget.getId(),
-				widget.getType(),
-				widget.getItemId(),
-				widget.getItemQuantity(),
-				safe(stripTags(widget.getText())),
-				safe(stripTags(widget.getName())),
-				widget.getCanvasLocation()
-		);
+		String json = gson.toJson(processingItems);
+		configManager.setConfiguration(CONFIG_GROUP, STORED_ITEMS_KEY, json);
+	}
+
+	private void loadProcessingItems()
+	{
+		String json = configManager.getConfiguration(CONFIG_GROUP, STORED_ITEMS_KEY);
+
+		if (json == null || json.isEmpty())
+		{
+			return;
+		}
+
+		try
+		{
+			Type listType = new TypeToken<List<ProcessingItem>>() {}.getType();
+			List<ProcessingItem> loadedItems = gson.fromJson(json, listType);
+
+			processingItems.clear();
+
+			if (loadedItems != null)
+			{
+				processingItems.addAll(loadedItems);
+			}
+
+			activeItem = processingItems.isEmpty() ? null : processingItems.get(0);
+		}
+		catch (Exception e)
+		{
+			log.warn("Failed to load processing items", e);
+		}
 	}
 
 	public void renameProcessingItem(ProcessingItem item, String newName)
@@ -506,6 +531,7 @@ public class ProcessingTrackerPlugin extends Plugin
 		}
 
 		item.setName(trimmed);
+		saveProcessingItems();
 
 		if (panel != null)
 		{
@@ -533,6 +559,8 @@ public class ProcessingTrackerPlugin extends Plugin
 		ProcessingItem item = new ProcessingItem(name);
 		processingItems.add(0, item);
 		activeItem = item;
+
+		saveProcessingItems();
 
 		if (panel != null)
 		{
