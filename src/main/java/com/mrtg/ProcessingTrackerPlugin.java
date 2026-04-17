@@ -462,6 +462,21 @@ public class ProcessingTrackerPlugin extends Plugin
 		}
 	}
 
+	public void setActiveItem(ProcessingItem item)
+	{
+		if (item == null)
+		{
+			return;
+		}
+
+		activeItem = item;
+
+		if (panel != null)
+		{
+			panel.refresh();
+		}
+	}
+
 	private void logWidget(Widget widget, String label)
 	{
 		log.info(

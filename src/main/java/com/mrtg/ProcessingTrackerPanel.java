@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Locale;
 import javax.inject.Inject;
 import javax.swing.*;
+import javax.swing.border.Border;
 
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.ColorScheme;
@@ -102,9 +103,6 @@ public class ProcessingTrackerPanel extends PluginPanel
         JPanel headerSection = createInnerSection();
         headerSection.setLayout(new BorderLayout());
 
-//        JLabel header = new JLabel(item.getName());
-//        header.setForeground(Color.WHITE);
-
         JTextField nameField = new JTextField(item.getName());
         nameField.setForeground(Color.WHITE);
         nameField.setBackground(ColorScheme.DARKER_GRAY_COLOR);
@@ -119,6 +117,12 @@ public class ProcessingTrackerPanel extends PluginPanel
 
         nameField.addFocusListener(new FocusAdapter()
         {
+            @Override
+            public void focusGained(FocusEvent e)
+            {
+                plugin.setActiveItem(item);
+            }
+
             @Override
             public void focusLost(FocusEvent e)
             {
@@ -138,10 +142,37 @@ public class ProcessingTrackerPanel extends PluginPanel
         collapseButton.setToolTipText(item.isCollapsed() ? "Expand" : "Minimize");
         collapseButton.addActionListener(e -> plugin.toggleProcessingItemCollapsed(item));
 
+        boolean isActive = item == plugin.getActiveItem();
+
+//        headerSection.setBackground(
+//                isActive ? ColorScheme.PROGRESS_COMPLETE_COLOR : ColorScheme.DARKER_GRAY_COLOR
+//        );
+
+
+        if (isActive)
+        {
+            JLabel activeLabel = new JLabel("Active");
+            activeLabel.setForeground(new Color(0, 200, 83));
+            // add near the right side
+        }
+
         headerSection.add(nameField, BorderLayout.CENTER);
         headerSection.add(collapseButton, BorderLayout.EAST);
 
         headerSection.setMaximumSize(new Dimension(Integer.MAX_VALUE, headerSection.getPreferredSize().height));
+
+        headerSection.setBorder(
+                createHeaderBorder(isActive)
+        );
+
+        headerSection.addMouseListener(new MouseAdapter()
+        {
+            @Override
+            public void mouseClicked(MouseEvent e)
+            {
+                plugin.setActiveItem(item);
+            }
+        });
 
         card.add(headerSection);
 
@@ -296,7 +327,7 @@ public class ProcessingTrackerPanel extends PluginPanel
 
             @Override
             public void mouseExited(MouseEvent e) {
-                deleteButton.setBackground(Color.LIGHT_GRAY);
+                deleteButton.setBackground(Color.DARK_GRAY);
             }
         });
 
@@ -355,6 +386,35 @@ public class ProcessingTrackerPanel extends PluginPanel
 
         row.setMaximumSize(new Dimension(Integer.MAX_VALUE, row.getPreferredSize().height));
         return row;
+    }
+
+    private Border createHeaderBorder(boolean isActive)
+    {
+        Border line;
+
+        if (isActive)
+        {
+            line = BorderFactory.createMatteBorder(
+                    0, 0, 3, 0,
+                    ColorScheme.PROGRESS_COMPLETE_COLOR
+            );
+        }
+        else
+        {
+            line = BorderFactory.createMatteBorder(
+                    0, 0, 1, 0,
+                    ColorScheme.DARK_GRAY_COLOR
+            );
+        }
+
+        Border padding = BorderFactory.createEmptyBorder(
+                6, 8, 6, 8
+        );
+
+        return BorderFactory.createCompoundBorder(
+                line,
+                padding
+        );
     }
 
     private String formatNumber(long value)
