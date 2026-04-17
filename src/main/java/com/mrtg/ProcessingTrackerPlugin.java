@@ -3,7 +3,10 @@ package com.mrtg;
 import com.google.inject.Provides;
 
 import java.io.IOException;
+import java.util.List;
 import javax.inject.Inject;
+
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.events.MenuOpened;
@@ -34,8 +37,10 @@ public class ProcessingTrackerPlugin extends Plugin
 	private net.runelite.client.ui.NavigationButton navButton;
 	private ProcessingTrackerPanel panel;
 
-	private final java.util.List<ProcessingItem> processingItems = new java.util.ArrayList<>();
-	private ProcessingItem activeItem;
+	@Getter
+    private final java.util.List<ProcessingItem> processingItems = new java.util.ArrayList<>();
+	@Getter
+    private ProcessingItem activeItem;
 
 	@Override
 	protected void startUp() throws IOException {
@@ -52,6 +57,16 @@ public class ProcessingTrackerPlugin extends Plugin
 				.priority(5)
 				.panel(panel)
 				.build();
+
+		if (processingItems.isEmpty())
+		{
+			createNewProcessingItem();
+		}
+		else
+		{
+			panel.refresh();
+		}
+
 
 		clientToolbar.addNavigation(navButton);
 	}
@@ -406,6 +421,37 @@ public class ProcessingTrackerPlugin extends Plugin
 		return -1;
 	}
 
+	public void deleteProcessingItem(ProcessingItem item)
+	{
+		processingItems.remove(item);
+
+		if (activeItem == item)
+		{
+			activeItem = processingItems.isEmpty() ? null : processingItems.get(0);
+		}
+
+		if (panel != null)
+		{
+			panel.refresh();
+		}
+	}
+
+	public void removeTradeEntry(TradeEntry entry)
+	{
+		for (ProcessingItem item : processingItems)
+		{
+			if (item.getTrades().remove(entry))
+			{
+				break;
+			}
+		}
+
+		if (panel != null)
+		{
+			panel.refresh();
+		}
+	}
+
 	private void logWidget(Widget widget, String label)
 	{
 		log.info(
@@ -439,7 +485,7 @@ public class ProcessingTrackerPlugin extends Plugin
 	{
 		String name = "Processing " + (processingItems.size() + 1);
 		ProcessingItem item = new ProcessingItem(name);
-		processingItems.add(item);
+		processingItems.add(0, item);
 		activeItem = item;
 
 		if (panel != null)
@@ -448,13 +494,8 @@ public class ProcessingTrackerPlugin extends Plugin
 		}
 	}
 
-	public ProcessingItem getActiveItem()
-	{
-		return activeItem;
-	}
 
-
-	@Provides
+    @Provides
 	ProcessingTrackerConfig provideConfig(ConfigManager configManager)
 	{
 		return configManager.getConfig(ProcessingTrackerConfig.class);
